@@ -1,0 +1,678 @@
+---
+title: "orderflowimbalance"
+output: pdf_document
+date: "2025-01-09"
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_knit$set(root.dir = "../")  # Set working directory to project root
+knitr::opts_knit$set(root.dir = "D:/Python/2025-winter-learn/project")  # Absolute path to project root
+```
+
+Import necessary libraries.
+
+```{r}
+library(readr)
+library(lubridate)
+library(dplyr)
+library(stargazer)
+library(glmnet)
+```
+
+# Load data
+
+```{r}
+symbols <- c("AAPL", "AMGN", "TSLA", "JPM", "XOM")
+#oos_dt_strs <- c(
+#  "2024-12-02","2024-12-03","2024-12-04","2024-12-05","2024-12-06",
+#  "2024-12-09","2024-12-10","2024-12-11","2024-12-12","2024-12-13",
+#  "2024-12-16","2024-12-17","2024-12-18","2024-12-19","2024-12-20",
+#  "2024-12-23","2024-12-24",             "2024-12-26","2024-12-27",
+#  "2024-12-30","2024-12-31",             "2025-01-02"
+#)
+is_dt_strs <- c(
+  "2024-12-02","2024-12-03","2024-12-04","2024-12-05","2024-12-06",
+  "2024-12-09","2024-12-10","2024-12-11","2024-12-12","2024-12-13",
+  "2024-12-16","2024-12-17","2024-12-18","2024-12-19","2024-12-20" 
+)
+
+is_df <- data.frame()
+
+for (dt_str in is_dt_strs) {
+  file_path <- paste0("data/processed/", symbols[1], "_mbp-10_", dt_str, ".csv")
+  tmp <- read_csv(file_path, show_col_types = FALSE)
+  tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC") 
+  date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+  date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+  #interval <- new_interval(date1, date2)
+  tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2,]
+  
+  is_df <- bind_rows(is_df, tmp)
+}
+colnames(is_df) <- paste0(symbols[1], "_", colnames(is_df))
+
+for (symbol in symbols[2:length(symbols)]) {
+  inner <- data.frame()
+  for (dt_str in is_dt_strs) {
+    file_path <- paste0("data/processed/", symbol, "_mbp-10_", dt_str, ".csv")
+    tmp <- read_csv(file_path, show_col_types = FALSE)
+    tmp <- read_csv(file_path, show_col_types = FALSE)
+    tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC") 
+    date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+    date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+    #interval <- new_interval(date1, date2)
+    tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2,]
+    
+    inner <- bind_rows(inner, tmp)
+  }
+  colnames(inner) <- paste0(symbol, "_", colnames(inner))
+  #is_df <- cbind(is_df, inner)
+  
+  # Merge data frames based on the datetime column
+  is_df <- merge(is_df, inner, by.x = paste0(symbols[1], "_ts_recv"), by.y = paste0(symbol, "_ts_recv"), all = TRUE)
+}
+```
+
+```{r}
+symbols <- c("AAPL", "AMGN", "TSLA", "JPM", "XOM")
+
+oos_dt_strs <- c(
+  "2024-12-23","2024-12-24",             "2024-12-26","2024-12-27",
+  "2024-12-30","2024-12-31",             "2025-01-02"
+)
+
+oos_df <- data.frame()
+
+for (dt_str in oos_dt_strs) {
+  file_path <- paste0("data/processed/", symbols[1], "_mbp-10_", dt_str, ".csv")
+  tmp <- read_csv(file_path, show_col_types = FALSE)
+  tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC") 
+  date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+  date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+  #interval <- new_interval(date1, date2)
+  tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2,]
+  
+  oos_df <- bind_rows(oos_df, tmp)
+}
+colnames(oos_df) <- paste0(symbols[1], "_", colnames(oos_df))
+
+for (symbol in symbols[2:length(symbols)]) {
+  inner <- data.frame()
+  for (dt_str in oos_dt_strs) {
+    file_path <- paste0("data/processed/", symbol, "_mbp-10_", dt_str, ".csv")
+    tmp <- read_csv(file_path, show_col_types = FALSE)
+    tmp <- read_csv(file_path, show_col_types = FALSE)
+    tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC") 
+    date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+    date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+    #interval <- new_interval(date1, date2)
+    tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2,]
+    
+    inner <- bind_rows(inner, tmp)
+  }
+  colnames(inner) <- paste0(symbol, "_", colnames(inner))
+  #oos_df <- cbind(oos_df, inner)
+  
+  # Merge data frames based on the datetime column
+  oos_df <- merge(oos_df, inner, by.x = paste0(symbols[1], "_ts_recv"), by.y = paste0(symbol, "_ts_recv"), all = TRUE)
+}
+```
+
+```{r}
+is_df
+```
+
+```{r}
+oos_df
+```
+
+
+```{r}
+interval <- strsplit(colnames(is_df)[3], "_")[[1]][3]
+interval
+```
+## Price Impact of best-level OFIs ( $ \textbf{PI}^{[1]} $ )
+
+```{r}
+regress <- function(df, dependent_var, independent_vars) {
+  formula <- as.formula(paste(dependent_var, "~", paste(independent_vars, collapse = " + ")))
+  model <- lm(formula, data = df)
+  return(model)
+}
+```
+
+Using coefficients from in-sample regression and evaluate on out-of-sample.
+
+```{r}
+# Perform regressions for each symbol
+for (symbol in symbols) {
+  independent_vars <- paste0(symbol, "_ofi_00_", interval)
+  # 1. Train the model on IS data
+  model <- regress(is_df, paste0(symbol, "_r_", interval), independent_vars)
+  print(summary(model))
+  # 2. Extract coefficients
+  coefs <- coef(model)
+  # 3. Predict on OOS data
+  complete_cases <- complete.cases(oos_df[, c(paste0(symbol, "_r_", interval), independent_vars)])
+  oos_df_complete <- oos_df[complete_cases, ]
+  predictions <- coefs[1] + coefs[2] * oos_df_complete[, independent_vars]
+  # 4. Evaluate R-squared
+  ss_total <- sum((oos_df_complete[, paste0(symbol, "_r_", interval)] - 
+                     mean(oos_df_complete[, paste0(symbol, "_r_", interval)]))^2)
+  ss_residual <- sum((oos_df_complete[, paste0(symbol, "_r_", interval)] - predictions)^2)
+  r_squared <- 1 - (ss_residual / ss_total)
+  print(paste("R-squared for", symbol, ":", r_squared)) 
+}
+```
+
+## Price Impact of Integrated OFIs ( $ \textbf{PI}^{I} $ )
+
+```{r}
+# Perform regressions for each symbol
+for (symbol in symbols) {
+  independent_vars <- paste0(symbol, "_ofi_I_", interval)
+  # 1. Train the model on IS data
+  model <- regress(is_df, paste0(symbol, "_r_", interval), independent_vars)
+  print(summary(model))
+  # 2. Extract coefficients
+  coefs <- coef(model)
+  # 3. Predict on OOS data
+  complete_cases <- complete.cases(oos_df[, c(paste0(symbol, "_r_", interval), independent_vars)])
+  oos_df_complete <- oos_df[complete_cases, ]
+  predictions <- coefs[1] + coefs[2] * oos_df_complete[, independent_vars]
+  # 4. Evaluate R-squared
+  ss_total <- sum((oos_df_complete[, paste0(symbol, "_r_", interval)] - 
+                     mean(oos_df_complete[, paste0(symbol, "_r_", interval)]))^2)
+  ss_residual <- sum((oos_df_complete[, paste0(symbol, "_r_", interval)] - predictions)^2)
+  r_squared <- 1 - (ss_residual / ss_total)
+  print(paste("R-squared for", symbol, ":", r_squared)) 
+}
+```
+
+```{r}
+for (symbol in symbols) {
+  # ofi00 to ofi04
+  independent_vars <- paste0(symbol, "_ofi_", sprintf("%02d", 0:4), "_", interval)
+
+  model <- regress(is_df, paste0(symbol, "_r_", interval), independent_vars)
+
+  print(summary(model))
+}
+```
+
+## LASSO for Cross-Impact OFIs (CI)
+
+Before we apply LASSO, we observe that OLS yields non-significant coefficients.
+
+```{r}
+for (symbol in symbols) {
+  dependent_var <- paste0(symbol, "_r_", interval)
+  # ofi00 to ofi04
+  independent_vars <- unlist(lapply(symbols, function(symbol) {
+    paste0(symbol, "_ofi_", sprintf("%02d", 0:0), "_", interval)
+  }))
+
+  model <- regress(is_df, dependent_var, independent_vars)
+
+  print(symbol)
+  print(summary(model))
+}
+```
+
+Regress on the integrated OFIs of all symbols:
+
+```{r}
+for (symbol in symbols) {
+  # ofi00 to ofi04
+  independent_vars <- paste0(symbols, "_ofi_I_", interval)
+
+  model <- regress(is_df, paste0(symbol, "_r_", interval), independent_vars)
+
+  print(summary(model))
+}
+```
+
+```{r}
+for (symbol in symbols) {
+  dependent_var <- paste0(symbol, "_r_", interval)
+  # ofi00 to ofi04
+  independent_vars <- unlist(lapply(symbols, function(symbol) {
+    paste0(symbol, "_ofi_", sprintf("%02d", 0:4), "_", interval)
+  }))
+
+  model <- regress(is_df, dependent_var, independent_vars)
+
+  print(summary(model))
+}
+```
+
+We regress the contemporaneous return of AAPL on the self- and cross-impact of the best level OFIs. We apply cross-validation to pick the appropriate parameter for LASSO regression.
+
+```{r}
+this_symbol <- "AAPL"
+dependent_var <- paste0(this_symbol, "_r_", interval)
+independent_vars <- paste0(symbols, "_ofi_00_", interval)
+
+# Prepare data for glmnet
+X <- makeX(is_df[, independent_vars], na.impute = TRUE) # Impute missing values in X
+y <- is_df[[dependent_var]]
+
+# Perform Lasso regression
+model <- cv.glmnet(X, y, alpha = 1, type.measure="mse", family="gaussian")  # alpha = 1 for Lasso
+```
+
+The following plot shows three pieces of information. The bottom x-axis is the value of $\log \lambda$. The upper x-axis tells how many non-zero coefficients there are (In this case, the jump from 1 non-zero coefficient to more occurs when $\log\lambda \approx -10$.)
+
+```{r}
+fit.lasso = glmnet(X,y)
+varnames <- colnames(X)
+plot(fit.lasso, xvar="lambda", label=TRUE)
+```
+The following dataframe shows the first (largest) $\lambda$ that creates an additional nonzero coefficient.
+
+```{r}
+df_lambda <- data.frame(
+  lambda = model$lambda,
+  log_lambda = log(model$lambda),
+  n_nonzero_coef = model$nzero
+)
+df_lambda[diff(df_lambda$n_nonzero_coef) != 0, ]
+```
+For example, if we pick $\lambda = 6 \times 10^{-5}$, there is only one nonzero coefficient. Moreover, this one is the impact from itself. (Recall that we are regressing on AAPL's return.)
+
+```{r}
+model <- glmnet(X, y, alpha = 1, lambda = 6e-5, type.measure="mse", family="gaussian")
+coef(model)
+```
+
+
+
+```{r}
+for (this_symbol in symbols) {
+  dependent_var <- paste0(this_symbol, "_r_", interval)
+  independent_vars <- paste0(symbols, "_ofi_00_", interval)
+  
+  # Prepare data for glmnet
+  X <- makeX(is_df[, independent_vars], na.impute = TRUE)
+  y <- is_df[[dependent_var]]
+  
+  # Perform Lasso regression
+  model <- cv.glmnet(X, y, alpha = 1, type.measure = "mse", family = "gaussian")
+  
+  # Create data frame with lambda, log(lambda), and nzero
+  #df_lambda <- data.frame(
+  #  lambda = model$lambda,
+  #  log_lambda = log(model$lambda),
+  #  n_nonzero_coef = model$nzero
+  #)
+  
+  cat(this_symbol, ":", model$lambda.1se, "\n")
+  #print(df_lambda[diff(df_lambda$n_nonzero_coef) != 0, ])
+  model <- glmnet(X, y, alpha = 1, lambda = model$lambda.1se, type.measure="mse", family="gaussian")
+  print(coef(model))
+}
+```
+
+```{r}
+for (this_symbol in symbols) {
+  dependent_var <- paste0(this_symbol, "_r_", interval)
+  independent_vars <- paste0(symbols, "_ofi_00_", interval)
+
+  # Prepare data for glmnet (IS)
+  X_is <- makeX(is_df[, independent_vars], na.impute = TRUE)
+  y_is <- is_df[[dependent_var]]
+
+  # Perform Lasso regression
+  model <- cv.glmnet(X_is, y_is, alpha = 1, type.measure = "mse", family = "gaussian")
+  cat(this_symbol, ":", model$lambda.1se, "\n")
+  model <- glmnet(X_is, y_is, alpha = 1, lambda = model$lambda.1se, type.measure="mse", family="gaussian")
+  print(coef(model))
+
+  # Predict on IS data and calculate R-squared
+  predictions_is <- predict(model, newx = X_is)
+  ss_total_is <- sum((y_is - mean(y_is))^2)
+  ss_residual_is <- sum((y_is - predictions_is)^2)
+  r_squared_is <- 1 - (ss_residual_is / ss_total_is)
+  print(paste("IS R-squared for", this_symbol, ":", r_squared_is))
+
+  # Prepare data for glmnet (OOS)
+  X_oos <- makeX(oos_df[, independent_vars], na.impute = TRUE) 
+  y_oos <- oos_df[[dependent_var]]
+
+  # Predict on OOS data and calculate R-squared
+  predictions_oos <- predict(model, newx = X_oos)
+  ss_total_oos <- sum((y_oos - mean(y_oos))^2)
+  ss_residual_oos <- sum((y_oos - predictions_oos)^2)
+  r_squared_oos <- 1 - (ss_residual_oos / ss_total_oos)
+  print(paste("OOS R-squared for", this_symbol, ":", r_squared_oos))
+}
+```
+
+```{r}
+for (this_symbol in symbols) {
+  dependent_var <- paste0(this_symbol, "_r_", interval)
+  independent_vars <- paste0(symbols, "_ofi_I_", interval)
+
+  # Prepare data for glmnet (IS)
+  X_is <- makeX(is_df[, independent_vars], na.impute = TRUE)
+  y_is <- is_df[[dependent_var]]
+
+  # Perform Lasso regression
+  model <- cv.glmnet(X_is, y_is, alpha = 1, type.measure = "mse", family = "gaussian")
+  cat(this_symbol, ":", model$lambda.1se, "\n")
+  model <- glmnet(X_is, y_is, alpha = 1, lambda = model$lambda.1se, type.measure="mse", family="gaussian")
+  print(coef(model))
+
+  # Predict on IS data and calculate R-squared
+  predictions_is <- predict(model, newx = X_is)
+  ss_total_is <- sum((y_is - mean(y_is))^2)
+  ss_residual_is <- sum((y_is - predictions_is)^2)
+  r_squared_is <- 1 - (ss_residual_is / ss_total_is)
+  print(paste("IS R-squared for", this_symbol, ":", r_squared_is))
+
+  # Prepare data for glmnet (OOS)
+  X_oos <- makeX(oos_df[, independent_vars], na.impute = TRUE) 
+  y_oos <- oos_df[[dependent_var]]
+
+  # Predict on OOS data and calculate R-squared
+  predictions_oos <- predict(model, newx = X_oos)
+  ss_total_oos <- sum((y_oos - mean(y_oos))^2)
+  ss_residual_oos <- sum((y_oos - predictions_oos)^2)
+  r_squared_oos <- 1 - (ss_residual_oos / ss_total_oos)
+  print(paste("OOS R-squared for", this_symbol, ":", r_squared_oos))
+}
+```
+
+```{r}
+# # code for one single symbol (IS/OOS)
+# interval <- "1min"
+# 
+# lags <- c(1, 2, 3, 5, 10, 20, 30)
+# fwds <- c(1, 2, 3, 5, 10, 20, 30)
+# lagcols <- c("ofi_I_1min", paste0("ofi_", sprintf("%02d", 0:4), "_1min"))
+# 
+# lagged_is_df <- data.frame()
+# symbol = symbols[1]
+# cols <- paste0(symbol, "_", lagcols)
+# for (dt_str in is_dt_strs) {
+#   file_path <- paste0("data/processed/", symbol, "_mbp-10_", dt_str, ".csv")
+#   tmp <- read_csv(file_path, show_col_types = FALSE)
+#   tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC")
+#   date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+#   date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+#   tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2, ]
+#   colnames(tmp) <- paste0(symbol, "_", colnames(tmp))
+# 
+#   for (fwd in fwds) {
+#     tmp[[paste0(symbol, "_r_", interval, "_fwd", fwd)]] <- lead(tmp[[paste0(symbol, "_r_", interval)]], n = fwd)
+#   }
+#   for (col in cols) {
+#     for (lag in lags) {
+#       tmp[[paste0(col, "_lag", lag)]] <- lag(tmp[[col]], n = lag)
+#     }
+#   }
+#   lagged_is_df <- bind_rows(lagged_is_df, tmp)
+# }
+# 
+# lagged_oos_df <- data.frame()
+# symbol = symbols[1]
+# cols <- paste0(symbol, "_", lagcols)
+# for (dt_str in oos_dt_strs) {
+#   file_path <- paste0("data/processed/", symbol, "_mbp-10_", dt_str, ".csv")
+#   tmp <- read_csv(file_path, show_col_types = FALSE)
+#   tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC")
+#   date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+#   date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+#   tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2, ]
+#   colnames(tmp) <- paste0(symbol, "_", colnames(tmp))
+# 
+#   for (fwd in fwds) {
+#     tmp[[paste0(symbol, "_r_", interval, "_fwd", fwd)]] <- lead(tmp[[paste0(symbol, "_r_", interval)]], n = fwd)
+#   }
+#   for (col in cols) {
+#     for (lag in lags) {
+#       tmp[[paste0(col, "_lag", lag)]] <- lag(tmp[[col]], n = lag)
+#     }
+#   }
+#   lagged_oos_df <- bind_rows(lagged_oos_df, tmp)
+# }
+```
+
+```{r}
+lagged_is_df
+```
+
+Create look-forward and lagged columns for both IS and OOS and for all symbols.
+
+```{r}
+interval <- "1min"
+lags <- c(1, 2, 3, 5, 10, 20, 30)
+fwds <- c(1, 2, 3, 5, 10, 20, 30)
+lagcols <- c("ofi_I_1min", paste0("ofi_", sprintf("%02d", 0:4), "_1min"))
+
+lagged_is_df <- data.frame()
+lagged_oos_df <- data.frame()
+
+for (symbol in symbols) {
+  cols <- paste0(symbol, "_", lagcols)
+  
+  inner_is <- data.frame()
+  for (dt_str in is_dt_strs) {
+    file_path <- paste0("data/processed/", symbol, "_mbp-10_", dt_str, ".csv")
+    tmp <- read_csv(file_path, show_col_types = FALSE)
+    tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC")
+    date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+    date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+    tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2, ]
+    colnames(tmp) <- paste0(symbol, "_", colnames(tmp))
+
+    for (fwd in fwds) {
+      tmp[[paste0(symbol, "_r_", interval, "_fwd", fwd)]] <- lead(tmp[[paste0(symbol, "_r_", interval)]], n = fwd)
+    }
+    for (col in cols) {
+      for (lag in lags) {
+        tmp[[paste0(col, "_lag", lag)]] <- lag(tmp[[col]], n = lag)
+      }
+    }
+    inner_is <- bind_rows(inner_is, tmp)
+  }
+  if (nrow(lagged_is_df) == 0) {
+    lagged_is_df <- inner_is
+  } else {
+    lagged_is_df <- merge(lagged_is_df, inner_is, by.x = paste0(symbols[1], "_ts_recv"), by.y = paste0(symbol, "_ts_recv"), all = TRUE)
+  }
+
+  inner_oos <- data.frame()
+  for (dt_str in oos_dt_strs) {
+    file_path <- paste0("data/processed/", symbol, "_mbp-10_", dt_str, ".csv")
+    tmp <- read_csv(file_path, show_col_types = FALSE)
+    tmp$ts_recv <- as.POSIXct(tmp$ts_recv, tz = "UTC")
+    date1 <- as.POSIXct(paste0(dt_str, " ", "14:45:00"), tz = "UTC")
+    date2 <- as.POSIXct(paste0(dt_str, " ", "20:45:00"), tz = "UTC")
+    tmp <- tmp[tmp$ts_recv >= date1 & tmp$ts_recv <= date2, ]
+    colnames(tmp) <- paste0(symbol, "_", colnames(tmp))
+
+    for (fwd in fwds) {
+      tmp[[paste0(symbol, "_r_", interval, "_fwd", fwd)]] <- lead(tmp[[paste0(symbol, "_r_", interval)]], n = fwd)
+    }
+    for (col in cols) {
+      for (lag in lags) {
+        tmp[[paste0(col, "_lag", lag)]] <- lag(tmp[[col]], n = lag)
+      }
+    }
+    inner_oos <- bind_rows(inner_oos, tmp)
+  }
+  if (nrow(lagged_oos_df) == 0) {
+    lagged_oos_df <- inner_oos
+  } else {
+    lagged_oos_df <- merge(lagged_oos_df, inner_oos, by.x = paste0(symbols[1], "_ts_recv"), by.y = paste0(symbol, "_ts_recv"), all = TRUE)
+  }
+}
+
+# Set "AAPL_ts_recv" as index column for lagged_is_df
+rownames(lagged_is_df) <- lagged_is_df$AAPL_ts_recv
+lagged_is_df$AAPL_ts_recv <- NULL  # remove the original column
+rownames(lagged_oos_df) <- lagged_oos_df$AAPL_ts_recv
+lagged_oos_df$AAPL_ts_recv <- NULL # remove
+
+lagged_is_df <- na.omit(lagged_is_df)
+lagged_oos_df <- na.omit(lagged_oos_df)
+```
+
+```{r}
+lagged_is_df
+```
+
+```{r}
+# lasso_lagged_regress <- function(is_df, dependent_var, independent_vars, lags = c(1, 2, 3, 5, 10, 20, 30), fwd = 1) {
+#   # Construct lagged variable names
+#   lagged_vars <- paste0(rep(independent_vars, each = length(lags)), "_lag", rep(lags, length(independent_vars)))
+# 
+#   # Prepare data for glmnet
+#   X <- as.matrix(is_df[, lagged_vars])
+#   y <- is_df[[paste0(dependent_var, "_fwd", fwd)]]
+# 
+#   # Perform Lasso regression
+#   model <- glmnet(X, y, alpha = 1, lambda = 5e-06)  # alpha = 1 for Lasso
+# 
+#   return(model)
+# }
+# 
+# this_symbol <- "AAPL"
+# independent_vars <- paste0(this_symbol, "_ofi_00_", interval)
+# model <- lasso_lagged_regress(lagged_df, paste0(this_symbol, "_r_", interval), independent_vars)
+# 
+# # Print coefficients
+# coef(model) 
+```
+
+```{r}
+
+# Loop through all symbols
+for (this_symbol in symbols) {
+  independent_vars <- paste0(this_symbol, "_ofi_00_", interval, "_lag1")
+  # Perform OLS regression on IS data
+  model <- regress(lagged_is_df, paste0(this_symbol, "_r_", interval), independent_vars)
+
+  # Print IS R-squared
+  print(summary(model)) 
+
+  # Calculate OOS R-squared
+  predictions_oos <- predict(model, newdata = lagged_oos_df)  # Predict on OOS data
+  ss_total_oos <- sum((lagged_oos_df[[paste0(this_symbol, "_r_", interval)]] - mean(lagged_oos_df[[paste0(this_symbol, "_r_", interval)]]))^2)
+  ss_residual_oos <- sum((lagged_oos_df[[paste0(this_symbol, "_r_", interval)]] - predictions_oos)^2)
+  r_squared_oos <- 1 - (ss_residual_oos / ss_total_oos)
+  print(paste("OOS R-squared for", this_symbol, ":", r_squared_oos))
+}
+```
+
+
+```{r}
+lasso_lagged_regress <- function(is_df, oos_df, dependent_var, independent_vars, lags = c(1, 2, 3, 5, 10, 20, 30), fwd = 1) {
+  # Construct lagged variable names
+  lagged_vars <- paste0(rep(independent_vars, each = length(lags)), "_lag", rep(lags, length(independent_vars)))
+
+  # Prepare data for glmnet (IS)
+  X_is <- as.matrix(is_df[, lagged_vars])
+  y_is <- is_df[[paste0(dependent_var, "_fwd", fwd)]]
+
+  # Perform Lasso regression with cross-validation
+  model_cv <- cv.glmnet(X_is, y_is, alpha = 1, type.measure = "mse", family = "gaussian") 
+  # model <- glmnet(X_is, y_is, alpha = 1, lambda = model_cv$lambda.1se, type.measure="mse", family="gaussian")
+  model <- glmnet(X_is, y_is, alpha = 1, lambda = model_cv$lambda.1se, type.measure="mse", family="gaussian")
+
+  # Predict on IS data and calculate R-squared
+  predictions_is <- predict(model, newx = X_is)
+  ss_total_is <- sum((y_is - mean(y_is))^2)
+  ss_residual_is <- sum((y_is - predictions_is)^2)
+  r_squared_is <- 1 - (ss_residual_is / ss_total_is)
+  print(paste("IS R-squared for", dependent_var, ":", r_squared_is))
+
+  # Prepare data for glmnet (OOS)
+  X_oos <- as.matrix(oos_df[, lagged_vars])
+  y_oos <- oos_df[[paste0(dependent_var, "_fwd", fwd)]]
+
+  # Predict on OOS data and calculate R-squared
+  predictions_oos <- predict(model, newx = X_oos)
+  ss_total_oos <- sum((y_oos - mean(y_oos))^2)
+  ss_residual_oos <- sum((y_oos - predictions_oos)^2)
+  r_squared_oos <- 1 - (ss_residual_oos / ss_total_oos)
+  print(paste("OOS R-squared for", dependent_var, ":", r_squared_oos))
+
+  return(model)
+}
+
+ols_lagged_regress <- function(is_df, oos_df, dependent_var, independent_vars, lags = c(1, 2, 3, 5, 10, 20, 30), fwd = 1) {
+  # Construct lagged variable names
+  lagged_vars <- paste0(rep(independent_vars, each = length(lags)), "_lag", rep(lags, length(independent_vars)))
+
+  # Prepare data for lm (IS)
+  X_is <- is_df[, lagged_vars]
+  y_is <- is_df[[paste0(dependent_var, "_fwd", fwd)]]
+
+  # Perform OLS regression
+  model <- lm(y_is ~ ., data = X_is)  # Use "." to include all lagged_vars
+
+  # Predict on IS data and calculate R-squared
+  predictions_is <- predict(model, newdata = X_is)
+  ss_total_is <- sum((y_is - mean(y_is))^2)
+  ss_residual_is <- sum((y_is - predictions_is)^2)
+  r_squared_is <- 1 - (ss_residual_is / ss_total_is)
+  print(paste("IS R-squared for", dependent_var, ":", r_squared_is))
+
+  # Prepare data for lm (OOS)
+  X_oos <- oos_df[, lagged_vars]
+  y_oos <- oos_df[[paste0(dependent_var, "_fwd", fwd)]]
+
+  # Predict on OOS data and calculate R-squared
+  predictions_oos <- predict(model, newdata = X_oos)
+  ss_total_oos <- sum((y_oos - mean(y_oos))^2)
+  ss_residual_oos <- sum((y_oos - predictions_oos)^2)
+  r_squared_oos <- 1 - (ss_residual_oos / ss_total_oos)
+  print(paste("OOS R-squared for", dependent_var, ":", r_squared_oos))
+
+  return(model)
+}
+
+# Loop through all symbols
+for (this_symbol in symbols) {
+  independent_vars <- paste0(this_symbol, "_ofi_00_", interval)
+  # model <- lasso_lagged_regress(lagged_is_df, lagged_oos_df, paste0(this_symbol, "_r_", interval), independent_vars)
+  model <- ols_lagged_regress(lagged_is_df, lagged_oos_df, paste0(this_symbol, "_r_", interval), independent_vars)
+
+  # Print coefficients
+  # print(coef(model))
+  print(summary(model))
+}
+```
+
+
+```{r}
+for (this_symbol in symbols) {
+  independent_vars <- paste0(this_symbol, "_ofi_00_", interval)
+  model <- lasso_lagged_regress(lagged_is_df, lagged_oos_df, paste0(this_symbol, "_r_", interval), independent_vars)
+
+  # Print coefficients
+  print(coef(model))
+}
+```
+
+```{r}
+for (this_symbol in symbols) {
+  independent_vars <- paste0(symbols, "_ofi_00_", interval)
+  model <- lasso_lagged_regress(lagged_is_df, lagged_oos_df, paste0(this_symbol, "_r_", interval), independent_vars)
+
+  # Print coefficients
+  print(coef(model))
+}
+```
+
+```{r}
+for (this_symbol in symbols) {
+  independent_vars <- paste0(this_symbol, "_ofi_I_", interval)
+  model <- lasso_lagged_regress(lagged_is_df, lagged_oos_df, paste0(this_symbol, "_r_", interval), independent_vars)
+
+  # Print coefficients
+  print(coef(model))
+}
+```

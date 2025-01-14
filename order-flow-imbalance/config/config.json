@@ -1,0 +1,10 @@
+{
+    "insample_start":    "2024-12-01",
+    "insample_end":      "2024-12-21",
+    "outofsample_start": "2024-12-22",
+    "outofsample_end":   "2025-01-02",
+    "start_time":        "14:45",
+    "end_time":          "20:45",
+    "symbols": ["AAPL", "AMGN", "TSLA", "JPM", "XOM"],
+    "interval": "1min"
+}
