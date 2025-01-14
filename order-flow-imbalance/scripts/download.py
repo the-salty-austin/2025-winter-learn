@@ -23,7 +23,7 @@ CONFIG_ROOT = os.path.join(PROJECT_ROOT, "config")
 with open(os.path.join(CONFIG_ROOT, "config.json"), "r") as f:
     DATA_CONFIG = json.load(f)
 
-client = db.Historical(DATA_CONFIG["db-SHTimf6iQqxGSENt5NJp7te63MkjP"])
+client = db.Historical(DATA_CONFIG["db-api"])
 
 symbols = DATA_CONFIG["symbols"]
 start_date = datetime.datetime.strptime(DATA_CONFIG["start_date"], "%Y-%m-%d")

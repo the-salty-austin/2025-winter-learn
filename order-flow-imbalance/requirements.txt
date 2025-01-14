@@ -1,3 +1,4 @@
-databento=0.47.0
-pandas=2.2.3
-numpy=1.26.4
+databento==0.47.0
+pandas==2.2.3
+numpy==1.26.4
+sklearn==1.5.2

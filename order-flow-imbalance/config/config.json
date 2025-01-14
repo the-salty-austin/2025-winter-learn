@@ -6,5 +6,6 @@
     "start_time":        "14:45",
     "end_time":          "20:45",
     "symbols": ["AAPL", "AMGN", "TSLA", "JPM", "XOM"],
-    "interval": "1min"
+    "interval": "1min",
+    "db-api": "YOUR API"
 }
